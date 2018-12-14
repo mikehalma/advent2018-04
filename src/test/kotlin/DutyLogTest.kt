@@ -1,3 +1,4 @@
+import junit.framework.TestCase.assertEquals
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.core.StringContains.containsString
@@ -67,9 +68,141 @@ class DutyLogTest {
         )
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
 
-        assertThat(guardDuties.size, `is`(2))
         assertThat(guardDuties[0].time, `is`(LocalDateTime.of(1518, 11, 1, 0, 0)))
         assertThat(guardDuties[1].time, `is`(LocalDateTime.of(1518, 11, 1, 1, 0)))
+    }
+
+    @Test
+    fun getGuardDuties_capturesAwake() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepFullHour() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:00] falls asleep",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`((0..59).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepNotFullHour() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`((1..59).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepWakesUp() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 00:59] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`((1..58).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepWakesUpTwice() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 00:02] wakes up",
+            "[1518-11-01 00:58] falls asleep",
+            "[1518-11-01 00:59] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 58)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepWakesUpThrice() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 00:02] wakes up",
+            "[1518-11-01 00:30] falls asleep",
+            "[1518-11-01 00:33] wakes up",
+            "[1518-11-01 00:58] falls asleep",
+            "[1518-11-01 00:59] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 30, 31, 32, 58)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+    }
+
+    @Test
+    fun getAsleepMinutes_all() {
+        val logEntry = LogEntry(LocalDateTime.of(1518, 11, 1, 0, 0), "falls asleep")
+        assertEquals(getMinutesLeftInHour(logEntry), (0..59).toMutableList())
+    }
+
+    @Test
+    fun getGuardDuties_twoGuards() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 00:02] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift",
+            "[1518-11-01 00:30] falls asleep",
+            "[1518-11-01 00:33] wakes up"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 30, 31, 32)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+    }
+
+    @Test
+    fun getGuardDuties_threeGuards() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 00:01] falls asleep",
+            "[1518-11-01 00:02] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift",
+            "[1518-11-01 00:30] falls asleep",
+            "[1518-11-01 00:33] wakes up",
+            "[1518-11-02 00:00] Guard #3 begins shift",
+            "[1518-11-02 00:55] falls asleep",
+            "[1518-11-02 00:57] wakes up"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 30, 31, 32)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+        assertThat(guardDuties[2].asleep, `is`(mutableListOf(55, 56)))
     }
 
 }

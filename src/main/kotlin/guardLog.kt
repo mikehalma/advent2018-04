@@ -2,7 +2,7 @@ import java.time.LocalDateTime
 
 data class LogEntry(val time: LocalDateTime, val action: String)
 
-data class GuardDuty(val guard: Int, val time: LocalDateTime)
+data class GuardDuty(val guard: Int, val time: LocalDateTime, val asleep: MutableList<Int>)
 
 enum class GuardAction {
     BEGINS_SHIFT, WAKES_UP, FALLS_ASLEEP;
@@ -27,7 +27,7 @@ fun loadLogEntry(logEntryString: String): LogEntry {
 }
 
 fun loadLogEntries(logs: List<String>): List<LogEntry> {
-    return logs.map {loadLogEntry(it)}.toSortedSet(compareBy {it.time}).toList()
+    return logs.map {loadLogEntry(it)}.toList().sortedWith(compareBy( {it.time}, {it.action}))
 }
 
 fun getGuardDuties(logEntries: List<LogEntry>): List<GuardDuty> {
@@ -35,8 +35,9 @@ fun getGuardDuties(logEntries: List<LogEntry>): List<GuardDuty> {
     for (logEntry in logEntries) {
         val guardAction = GuardAction.of(logEntry.action)
         when (guardAction) {
-            GuardAction.BEGINS_SHIFT -> guardDuties.add(GuardDuty(getGuard(logEntry.action), logEntry.time))
-            else -> throw IllegalArgumentException()
+            GuardAction.BEGINS_SHIFT -> guardDuties.add(GuardDuty(getGuard(logEntry.action), logEntry.time, mutableListOf()))
+            GuardAction.FALLS_ASLEEP -> guardDuties.last().asleep.addAll(getMinutesLeftInHour(logEntry))
+            GuardAction.WAKES_UP -> guardDuties.last().asleep.removeAll(getMinutesLeftInHour(logEntry))
         }
     }
     return guardDuties
@@ -47,4 +48,8 @@ fun getGuard(action: String): Int {
     val result = regex.find(action)
     val (guard) = result!!.destructured
     return guard.toInt()
+}
+
+fun getMinutesLeftInHour(logEntry: LogEntry):MutableList<Int> {
+    return IntRange(logEntry.time.minute, 59).toMutableList()
 }
