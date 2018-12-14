@@ -51,11 +51,25 @@ class DutyLogTest {
             "[1518-11-01 00:00] Guard #2 begins shift",
             "[1518-11-01 01:00] Guard #4 begins shift"
             )
-        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
-        assertThat(guardDuties.size, `is`(2))
 
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties.size, `is`(2))
         assertThat(guardDuties[0].guard, `is`(2))
         assertThat(guardDuties[1].guard, `is`(4))
+    }
+
+    @Test
+    fun getGuardDuties_capturesTimes() {
+        val logs = listOf(
+            "[1518-11-01 00:00] Guard #2 begins shift",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties.size, `is`(2))
+        assertThat(guardDuties[0].time, `is`(LocalDateTime.of(1518, 11, 1, 0, 0)))
+        assertThat(guardDuties[1].time, `is`(LocalDateTime.of(1518, 11, 1, 1, 0)))
     }
 
 }

@@ -2,7 +2,7 @@ import java.time.LocalDateTime
 
 data class LogEntry(val time: LocalDateTime, val action: String)
 
-data class GuardDuty(val guard: Int)
+data class GuardDuty(val guard: Int, val time: LocalDateTime)
 
 enum class GuardAction {
     BEGINS_SHIFT, WAKES_UP, FALLS_ASLEEP;
@@ -35,7 +35,7 @@ fun getGuardDuties(logEntries: List<LogEntry>): List<GuardDuty> {
     for (logEntry in logEntries) {
         val guardAction = GuardAction.of(logEntry.action)
         when (guardAction) {
-            GuardAction.BEGINS_SHIFT -> guardDuties.add(GuardDuty(getGuard(logEntry.action)))
+            GuardAction.BEGINS_SHIFT -> guardDuties.add(GuardDuty(getGuard(logEntry.action), logEntry.time))
             else -> throw IllegalArgumentException()
         }
     }
