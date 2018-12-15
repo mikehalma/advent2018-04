@@ -192,17 +192,32 @@ class DutyLogTest {
             "[1518-11-01 00:01] falls asleep",
             "[1518-11-01 00:02] wakes up",
             "[1518-11-01 01:00] Guard #4 begins shift",
-            "[1518-11-01 00:30] falls asleep",
-            "[1518-11-01 00:33] wakes up",
+            "[1518-11-01 01:30] falls asleep",
+            "[1518-11-01 01:33] wakes up",
             "[1518-11-02 00:00] Guard #3 begins shift",
             "[1518-11-02 00:55] falls asleep",
             "[1518-11-02 00:57] wakes up"
         )
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
 
-        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 30, 31, 32)))
-        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf(30, 31, 32)))
         assertThat(guardDuties[2].asleep, `is`(mutableListOf(55, 56)))
+    }
+
+    @Test
+    fun getGuardDuties_fromFile() {
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(loadLogFile("guardDutiesSimple.txt")))
+
+        assertThat(guardDuties[0].asleep, `is`((1..59).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDutySummary_simple() {
+        // TODO we needa function that produces a summary for each guard with total minutes asleep and most common minutes asleep
+        // start with single guard single sleep, then 2 single sleep, then 1 multi sleep, then 1 mutli days, then 2 multi days
     }
 
 }

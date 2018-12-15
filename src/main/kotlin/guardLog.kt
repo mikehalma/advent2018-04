@@ -1,3 +1,5 @@
+import java.io.File
+import java.nio.charset.Charset
 import java.time.LocalDateTime
 
 data class LogEntry(val time: LocalDateTime, val action: String)
@@ -52,4 +54,9 @@ fun getGuard(action: String): Int {
 
 fun getMinutesLeftInHour(logEntry: LogEntry):MutableList<Int> {
     return IntRange(logEntry.time.minute, 59).toMutableList()
+}
+
+
+fun loadLogFile(fileName :String) :List<String> {
+    return File(object {}.javaClass.getResource(fileName).toURI()).readLines(Charset.defaultCharset())
 }

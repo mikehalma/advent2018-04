@@ -1,0 +1,3 @@
+[1518-11-01 00:00] Guard #2 begins shift
+[1518-11-01 00:01] falls asleep
+[1518-11-01 01:00] Guard #4 begins shift
