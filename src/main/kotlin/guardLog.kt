@@ -15,11 +15,13 @@ enum class GuardAction {
                 action.contains("begins shift") -> BEGINS_SHIFT
                 action.contains("falls asleep") -> FALLS_ASLEEP
                 action.contains("wakes up") -> WAKES_UP
-                else -> throw IllegalArgumentException()
+                else -> throw IllegalArgumentException("The action $action is not recognised")
             }
         }
     }
 }
+
+data class GuardDutySummary(val guard: Int, val totalMinutesAsleep: Int, val minutesAsleepLongest: Int)
 
 fun loadLogEntry(logEntryString: String): LogEntry {
     val regex = """\[(\d+)-(\d+)-(\d+) (\d+):(\d+)] (.*)""".toRegex()
@@ -34,12 +36,13 @@ fun loadLogEntries(logs: List<String>): List<LogEntry> {
 
 fun getGuardDuties(logEntries: List<LogEntry>): List<GuardDuty> {
     val guardDuties: MutableList<GuardDuty> = mutableListOf()
+    var fellAsleep = LocalDateTime.MIN
     for (logEntry in logEntries) {
         val guardAction = GuardAction.of(logEntry.action)
         when (guardAction) {
             GuardAction.BEGINS_SHIFT -> guardDuties.add(GuardDuty(getGuard(logEntry.action), logEntry.time, mutableListOf()))
-            GuardAction.FALLS_ASLEEP -> guardDuties.last().asleep.addAll(getMinutesLeftInHour(logEntry))
-            GuardAction.WAKES_UP -> guardDuties.last().asleep.removeAll(getMinutesLeftInHour(logEntry))
+            GuardAction.FALLS_ASLEEP -> fellAsleep = logEntry.time
+            GuardAction.WAKES_UP -> guardDuties.last().asleep.addAll(getAsleepMinutes(fellAsleep, logEntry.time))
         }
     }
     return guardDuties
@@ -52,11 +55,34 @@ fun getGuard(action: String): Int {
     return guard.toInt()
 }
 
-fun getMinutesLeftInHour(logEntry: LogEntry):MutableList<Int> {
-    return IntRange(logEntry.time.minute, 59).toMutableList()
+fun getAsleepMinutes(fellAsleep: LocalDateTime, wokeUp: LocalDateTime):MutableList<Int> {
+    var time = fellAsleep
+    val minutes = mutableListOf<Int>()
+    while (time < wokeUp) {
+        minutes.add(time.minute)
+        time = time.plusMinutes(1)
+    }
+    return minutes
 }
 
 
 fun loadLogFile(fileName :String) :List<String> {
     return File(object {}.javaClass.getResource(fileName).toURI()).readLines(Charset.defaultCharset())
+}
+
+fun getGuardDutySummaries(allGuardDuties: List<GuardDuty>): List<GuardDutySummary> {
+    val summariesByGuard = allGuardDuties.groupBy { it.guard }
+    return summariesByGuard.map {(guard, singleGuardDuties) -> getGuardDutySummary(guard, singleGuardDuties)}.toList()
+}
+
+fun getGuardDutySummary(guard: Int, guardDuties: List<GuardDuty>): GuardDutySummary {
+    val minutesAsleep = guardDuties.flatMap { it.asleep }.size
+    val minutesAsleepCounts = guardDuties.flatMap { it.asleep }.groupingBy { it }.eachCount()
+    val maxMinutesAsleep = minutesAsleepCounts.maxBy { it.value }?.key
+    return GuardDutySummary(guard, minutesAsleep, maxMinutesAsleep?:0)
+}
+
+fun getSleepiestGuard(allGuardDutySummaries: List<GuardDutySummary>): Int {
+    val sleepiestGuard = allGuardDutySummaries.maxBy {it.totalMinutesAsleep}
+    return if (sleepiestGuard != null) sleepiestGuard.guard * sleepiestGuard.minutesAsleepLongest else 0
 }

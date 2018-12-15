@@ -90,25 +90,12 @@ class DutyLogTest {
         val logs = listOf(
             "[1518-11-01 00:00] Guard #2 begins shift",
             "[1518-11-01 00:00] falls asleep",
+            "[1518-11-01 00:59] wakes up",
             "[1518-11-01 01:00] Guard #4 begins shift"
         )
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
 
-        assertThat(guardDuties[0].asleep, `is`((0..59).toList()))
-        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
-
-    }
-
-    @Test
-    fun getGuardDuties_capturesAsleepNotFullHour() {
-        val logs = listOf(
-            "[1518-11-01 00:00] Guard #2 begins shift",
-            "[1518-11-01 00:01] falls asleep",
-            "[1518-11-01 01:00] Guard #4 begins shift"
-        )
-        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
-
-        assertThat(guardDuties[0].asleep, `is`((1..59).toList()))
+        assertThat(guardDuties[0].asleep, `is`((0..58).toList()))
         assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
 
     }
@@ -124,6 +111,38 @@ class DutyLogTest {
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
 
         assertThat(guardDuties[0].asleep, `is`((1..58).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepWakesUpNotFullHour() {
+        val logs = listOf(
+            "[1518-11-01 00:02] Guard #2 begins shift",
+            "[1518-11-01 00:03] falls asleep",
+            "[1518-11-01 00:59] wakes up",
+            "[1518-11-01 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        assertThat(guardDuties[0].asleep, `is`((3..58).toList()))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+
+    }
+
+    @Test
+    fun getGuardDuties_capturesAsleepWakesUpOverMidnight() {
+        val logs = listOf(
+            "[1518-11-01 23:58] Guard #2 begins shift",
+            "[1518-11-01 23:59] falls asleep",
+            "[1518-11-02 00:59] wakes up",
+            "[1518-11-02 01:00] Guard #4 begins shift"
+        )
+        val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
+
+        val guard2minutes = mutableListOf(59)
+        guard2minutes.addAll((0..58).toList())
+        assertEquals(guardDuties[0].asleep, guard2minutes)
         assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
 
     }
@@ -164,9 +183,13 @@ class DutyLogTest {
     }
 
     @Test
-    fun getAsleepMinutes_all() {
-        val logEntry = LogEntry(LocalDateTime.of(1518, 11, 1, 0, 0), "falls asleep")
-        assertEquals(getMinutesLeftInHour(logEntry), (0..59).toMutableList())
+    fun getAsleepMinutes_overMidnight() {
+        val expectedAsleepMinutes = mutableListOf(58, 59, 0, 1, 2)
+        val actualAsleepMinutes = getAsleepMinutes(
+            LocalDateTime.of(1518, 11, 1, 23, 58),
+            LocalDateTime.of(1518, 11, 2, 0, 3)
+        )
+        assertThat(actualAsleepMinutes, `is`(expectedAsleepMinutes))
     }
 
     @Test
@@ -209,15 +232,85 @@ class DutyLogTest {
     fun getGuardDuties_fromFile() {
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(loadLogFile("guardDutiesSimple.txt")))
 
-        assertThat(guardDuties[0].asleep, `is`((1..59).toList()))
+        assertThat(guardDuties[0].asleep, `is`((1..58).toList()))
         assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
 
     }
 
     @Test
     fun getGuardDutySummary_simple() {
-        // TODO we needa function that produces a summary for each guard with total minutes asleep and most common minutes asleep
-        // start with single guard single sleep, then 2 single sleep, then 1 multi sleep, then 1 mutli days, then 2 multi days
+        val guardDuty = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (1..58).toMutableList())
+        val expected = listOf(GuardDutySummary(2, 58, 1))
+
+        val guardSummaries = getGuardDutySummaries(listOf(guardDuty))
+
+        assertThat(guardSummaries, `is`(expected))
     }
+
+    @Test
+    fun getGuardDutySummary_twoDuties() {
+        val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (1..58).toMutableList())
+        val guardDuty2 = GuardDuty(2, LocalDateTime.of(1518, 11, 2, 0, 0), (2..2).toMutableList())
+        val expected = listOf(GuardDutySummary(2, 59, 2))
+
+        val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2))
+
+        assertThat(guardSummaries, `is`(expected))
+    }
+
+    @Test
+    fun getGuardDutySummary_twoGuards() {
+        val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (10..11).toMutableList())
+        val guardDuty2 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 0, 0), (15..15).toMutableList())
+        val expected1 = GuardDutySummary(2, 2, 10)
+        val expected2 = GuardDutySummary(4, 1, 15)
+        val expected = listOf(expected1, expected2)
+
+        val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2))
+
+        assertThat(guardSummaries, `is`(expected))
+    }
+
+    @Test
+    fun getGuardDutySummary_twoGuardsTwoDuties() {
+        val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (10..13).toMutableList())
+        val guardDuty2 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 0, 0), mutableListOf(15, 21))
+        val guardDuty3 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 4, 0), (11..16).toMutableList())
+        val guardDuty4 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 5, 0), (15..23).toMutableList())
+        val expected1 = GuardDutySummary(2, 10, 11)
+        val expected2 = GuardDutySummary(4, 11, 15)
+        val expected = listOf(expected1, expected2)
+
+        val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2, guardDuty3, guardDuty4))
+
+        assertThat(guardSummaries, `is`(expected))
+    }
+
+    @Test
+    fun sleepiestGuard_simple() {
+        val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (10..13).toMutableList())
+        val guardDuty2 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 0, 0), mutableListOf(15))
+        val guardDuty3 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 4, 0), (13..16).toMutableList())
+        val guardDuty4 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 5, 0), (15..33).toMutableList())
+
+        val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2, guardDuty3, guardDuty4))
+
+        assertThat(getSleepiestGuard(guardSummaries), `is`(4 * 15))
+    }
+
+    @Test
+    fun sleepiestGuard_example() {
+        val actual = getSleepiestGuard(getGuardDutySummaries(getGuardDuties(loadLogEntries(loadLogFile("guardDutiesExample.txt")))))
+
+        assertThat(actual, `is`(240))
+    }
+
+    @Test
+    fun sleepistGuard() {
+        val actual = getSleepiestGuard(getGuardDutySummaries(getGuardDuties(loadLogEntries(loadLogFile("guardDuties.txt")))))
+
+        assertThat(actual, `is`(50558))
+    }
+
 
 }
