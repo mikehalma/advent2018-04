@@ -176,13 +176,13 @@ class DutyLogTest {
             "[1518-11-01 00:01] falls asleep",
             "[1518-11-01 00:02] wakes up",
             "[1518-11-01 01:00] Guard #4 begins shift",
-            "[1518-11-01 00:30] falls asleep",
-            "[1518-11-01 00:33] wakes up"
+            "[1518-11-01 01:30] falls asleep",
+            "[1518-11-01 01:33] wakes up"
         )
         val guardDuties: List<GuardDuty> = getGuardDuties(loadLogEntries(logs))
 
-        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1, 30, 31, 32)))
-        assertThat(guardDuties[1].asleep, `is`(mutableListOf()))
+        assertThat(guardDuties[0].asleep, `is`(mutableListOf(1)))
+        assertThat(guardDuties[1].asleep, `is`(mutableListOf(30, 31, 32)))
     }
 
     @Test
