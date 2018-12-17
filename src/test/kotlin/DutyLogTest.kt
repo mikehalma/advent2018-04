@@ -240,7 +240,7 @@ class DutyLogTest {
     @Test
     fun getGuardDutySummary_simple() {
         val guardDuty = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (1..58).toMutableList())
-        val expected = listOf(GuardDutySummary(2, 58, 1))
+        val expected = listOf(GuardDutySummary(2, 58, 1, 1))
 
         val guardSummaries = getGuardDutySummaries(listOf(guardDuty))
 
@@ -251,7 +251,7 @@ class DutyLogTest {
     fun getGuardDutySummary_twoDuties() {
         val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (1..58).toMutableList())
         val guardDuty2 = GuardDuty(2, LocalDateTime.of(1518, 11, 2, 0, 0), (2..2).toMutableList())
-        val expected = listOf(GuardDutySummary(2, 59, 2))
+        val expected = listOf(GuardDutySummary(2, 59, 2, 2))
 
         val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2))
 
@@ -262,8 +262,8 @@ class DutyLogTest {
     fun getGuardDutySummary_twoGuards() {
         val guardDuty1 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 0, 0), (10..11).toMutableList())
         val guardDuty2 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 0, 0), (15..15).toMutableList())
-        val expected1 = GuardDutySummary(2, 2, 10)
-        val expected2 = GuardDutySummary(4, 1, 15)
+        val expected1 = GuardDutySummary(2, 2, 10, 1)
+        val expected2 = GuardDutySummary(4, 1, 15, 1)
         val expected = listOf(expected1, expected2)
 
         val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2))
@@ -277,8 +277,8 @@ class DutyLogTest {
         val guardDuty2 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 0, 0), mutableListOf(15, 21))
         val guardDuty3 = GuardDuty(2, LocalDateTime.of(1518, 11, 1, 4, 0), (11..16).toMutableList())
         val guardDuty4 = GuardDuty(4, LocalDateTime.of(1518, 11, 2, 5, 0), (15..23).toMutableList())
-        val expected1 = GuardDutySummary(2, 10, 11)
-        val expected2 = GuardDutySummary(4, 11, 15)
+        val expected1 = GuardDutySummary(2, 10, 11, 2)
+        val expected2 = GuardDutySummary(4, 11, 15, 2)
         val expected = listOf(expected1, expected2)
 
         val guardSummaries = getGuardDutySummaries(listOf(guardDuty1, guardDuty2, guardDuty3, guardDuty4))
@@ -300,17 +300,22 @@ class DutyLogTest {
 
     @Test
     fun sleepiestGuard_example() {
-        val actual = getSleepiestGuard(getGuardDutySummaries(getGuardDuties(loadLogEntries(loadLogFile("guardDutiesExample.txt")))))
-
-        assertThat(actual, `is`(240))
+        assertThat(getSleepiestGuard("guardDutiesExample.txt"), `is`(240))
     }
 
     @Test
-    fun sleepistGuard() {
-        val actual = getSleepiestGuard(getGuardDutySummaries(getGuardDuties(loadLogEntries(loadLogFile("guardDuties.txt")))))
-
-        assertThat(actual, `is`(50558))
+    fun sleepiestGuard() {
+        assertThat(getSleepiestGuard("guardDuties.txt"), `is`(50558))
     }
 
+    @Test
+    fun mostFrequentSleeper_example() {
+        assertThat(getMostFrequentSleeper("guardDutiesExample.txt"), `is`(4455))
+    }
+
+    @Test
+    fun mostFrequentSleeper() {
+        assertThat(getMostFrequentSleeper("guardDuties.txt"), `is`(28198))
+    }
 
 }

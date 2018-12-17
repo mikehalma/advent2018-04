@@ -21,7 +21,12 @@ enum class GuardAction {
     }
 }
 
-data class GuardDutySummary(val guard: Int, val totalMinutesAsleep: Int, val minutesAsleepLongest: Int)
+data class GuardDutySummary(
+    val guard: Int,
+    val totalMinutesAsleep: Int,
+    val minutesAsleepLongest: Int,
+    val frequencyOfLongestMinuteAsleep: Int
+)
 
 fun loadLogEntry(logEntryString: String): LogEntry {
     val regex = """\[(\d+)-(\d+)-(\d+) (\d+):(\d+)] (.*)""".toRegex()
@@ -79,10 +84,32 @@ fun getGuardDutySummary(guard: Int, guardDuties: List<GuardDuty>): GuardDutySumm
     val minutesAsleep = guardDuties.flatMap { it.asleep }.size
     val minutesAsleepCounts = guardDuties.flatMap { it.asleep }.groupingBy { it }.eachCount()
     val maxMinutesAsleep = minutesAsleepCounts.maxBy { it.value }?.key
-    return GuardDutySummary(guard, minutesAsleep, maxMinutesAsleep?:0)
+    val frequencyOfLongestMinuteAsleep = minutesAsleepCounts.maxBy { it.value }?.value
+    return GuardDutySummary(guard, minutesAsleep, maxMinutesAsleep?:0, frequencyOfLongestMinuteAsleep?:0)
 }
 
 fun getSleepiestGuard(allGuardDutySummaries: List<GuardDutySummary>): Int {
     val sleepiestGuard = allGuardDutySummaries.maxBy {it.totalMinutesAsleep}
     return if (sleepiestGuard != null) sleepiestGuard.guard * sleepiestGuard.minutesAsleepLongest else 0
+}
+
+fun getSleepiestGuard(fileName: String): Int {
+    val logEntriesRaw = loadLogFile(fileName)
+    val logEntries = loadLogEntries(logEntriesRaw)
+    val guardDuties = getGuardDuties(logEntries)
+    val guardDutySummaries = getGuardDutySummaries(guardDuties)
+    return getSleepiestGuard(guardDutySummaries)
+}
+
+fun getMostFrequentSleeper(fileName: String): Int {
+    val logEntriesRaw = loadLogFile(fileName)
+    val logEntries = loadLogEntries(logEntriesRaw)
+    val guardDuties = getGuardDuties(logEntries)
+    val guardDutySummaries = getGuardDutySummaries(guardDuties)
+    return getMostFrequentSleeper(guardDutySummaries)
+}
+
+fun getMostFrequentSleeper(allGuardDutySummaries: List<GuardDutySummary>): Int {
+    val mostFrequentSleeper = allGuardDutySummaries.maxBy {it.frequencyOfLongestMinuteAsleep}
+    return if (mostFrequentSleeper != null) mostFrequentSleeper.guard * mostFrequentSleeper.minutesAsleepLongest else 0
 }
